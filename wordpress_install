@@ -1,0 +1,21 @@
+<Wordpress 설치>
+dnf install -y php-mysqlnd php-fpm mariadb-server httpd tar curl php-json
+
+systemctl start httpd mariadb
+firewall-cmd --permanent --add-service=http
+firewall-cmd --reload
+
+mysql -u root -p
+CREATE DATABASE wordpress; 
+CREATE USER `admin`@`localhost` IDENTIFIED BY 'pass'; 
+GRANT ALL ON wordpress.* TO `admin`@`localhost`; 
+FLUSH PRIVILEGES; 
+exit
+
+wget https://wordpress.org/latest.tar.gz
+mv latest.tar.gz wordpress.tar.gz
+tar xf wordpress.tar.gz
+mv wordpress /var/www/html/wp
+chown -R apache:apache /var/www/html/wp
+
+브라우저에서 http://192.168.80.112/wp 접속후 설치 진행
