@@ -1,0 +1,21 @@
+- 웹 서비스  :  http 프로토콜을 이용한 클라이언트(웹 브라우저: 크롬, 익스플로러, 에지, 사파리, 오페라 등)의 
+                   요청을  웹서버(아파치, nginx, IIS 등)가  처리해서 응답해주는 서비스
+
+- 리눅스에서는  Apache 나 nginx가 서버 프로그램으로 사용됨. => HTML 만 처리 가능.
+                                                           만일 HTML 이외의 다른 페이지의 해석이 필요할 경우
+                                                            WAS(Web Application Server)가 필요하다.
+
+- 설치
+   Apache :  yum(dnf) install httpd ( centos8 )
+
+   nginx : 
+             yum install epel-release  => 저장소 추가
+             yum(dnf) install nginx ( test_svr )
+
+- 실행
+  Apache : systemctl start httpd
+  Nginx   : systemctl start nginx
+
+- 설정파일
+ Apache : /etc/httpd/conf/httpd.conf
+ Nginx   : /etc/nginx/nginx.conf
