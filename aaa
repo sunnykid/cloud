@@ -1,0 +1,233 @@
+<AAA 서비스>
+
+Authentication : 인증
+
+Authorization  : 권한
+
+Accounting     : 과금/감사
+
+3가지 기능을 묶어서 AAA 라고 하고, AAA서비스를 하는 서버를 AAA서버라고 한다.
+
+이 때 사용되는 프로토콜에는 RADIUS(표준)와 TACACS+(시스코)가 있다.
+
+서비스 중에 Authentication(인증)은 네트워크 장비에 대한 인증을 중앙에서 관리하기 위해 사용된다. AAA서버를 사용하지 않으면 각각의 장비에서 인증을 별도로 관리해야하므로 비효율적이고, 장비나 사용자가 많을 경우 관리가 어렵다.
+
+시스코에는 ACS(Access Control System)라는 장비를 이용해서 AAA서비스를 한다. 윈도우서버나 리눅스에 서비스를 올려서 사용할 수 있다.
+
+<cisco IOS에서 AAA설정>
+aaa new-model
+aaa authentication login default group radius
+radius-server host 192.168.40.40 auth-port 1812 acct-port 1813 key cisco123
+
+line vty 0 4
+login authentication default
+
+<console 접속에 대해 별도의 인증을 가져 갈 경우>
+aaa authentication login CONSOLE group radius local
+line console 0
+login authentication CONSOLE
+
+
+
+>>CentOS에서 RADIUS를 이용하여 AAA서비스하기
+
+yum -y update
+
+yum -y install freeradius freeradius-utils freeradius-mysql freeradius-perl
+
+systemctl start radiusd.service    : 서비스 시작
+systemctl enable radiusd.service   : 서비스 활성화(재부팅시 서비스 자동 시작)
+systemctl status radiusd.service   : 서비스 상태 확인
+
+firewall-cmd --add-service={https,radius} --permanent
+firewall-cmd --reload
+pkill radius
+radiusd -X
+
+
+yum install -y mariadb-server mariadb
+yum install epel-release yum-utils
+yum install http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+yum-config-manager --enable remi-php73
+yum install php php-common php-opcache php-mcrypt php-cli php-gd php-curl php-mysqlnd
+php -v
+
+cd /etc/raddb
+vi clients.conf
+client R1 {
+     ipaddr      = 172.16.10.1
+     secret      = cisco123
+}
+
+vi users
+
+admin   Cleartext-Password := "cisco"
+        Reply-Message := "Hello, %{User-Name}",
+        Service-Type = Shell-User,
+        cisco-avpair = "shell:priv-lvl=15"
+
+$enab15$        Cleartext-Password := "qwer1234"
+                Service-Type = Shell-User
+
+aaa authentication enable default group radius => enable 패스워드를 radius에서 인증
+aaa authorization exec default group radius => 설정된 유저레벨에 따라 프롬프트 진입
+
+test aaa group radius admin cisco legecy
+
+apt-get install dnsutils
+
+radius-server host 192.168.40.40 auth-port 1812 acct-port 1813 key qwer1234
+
+vi clients.conf
+
+
+client SW1 {
+    ipaddr = 192.168.40.253
+    secret = qwer1234
+}
+
+
+vi users
+
+admin2 Cleartext-Password := "cisco123"
+        Reply-Message := "Hello, %{User-Name}",
+        Service-Type = Shell-User,
+        cisco-avpair = "shell:priv-lvl=15"
+
+
+
+systemctl restart radiusd
+
+
+
+>>CentOS에서 TACACS+를 이용하여 AAA서비스하기
+
+- yum 설치시
+
+cd /etc/yum.repos.d
+
+vi nux-misc.repo
+[nux-misc]
+name=Nux Misc
+baseurl=http://li.nux.ro/download/nux/misc/el6/x86_64/
+enabled=0
+gpgcheck=1
+gpgkey=http://li.nux.ro/download/nux/RPM-GPG-KEY-nux.ro
+
+yum --enablerepo=nux-misc install tac_plus
+
+
+tac_plus.conf => /etc
+
+service tac_plus start
+
+- complie 설치시
+
+tac_plus.conf => /usr/local/tacacs/conf디렉토리 생성하고 conf 디렉토리에
+                 tac_plus.conf파일 생성하고 내용 작성
+
+vi /etc/tac_plus.conf
+key = "cisco123"
+
+acl = default {
+		permit = 192\.168\.10\.1
+}
+
+host = 192.168.10.1 {
+       prompt = "Username:"
+}
+
+user = admin {
+	login = des 해시값
+	service = exec {
+		priv-lvl = 15
+	}
+}
+
+user = $enab15$ {
+	login = des 해시값
+}
+
+/usr/local/tacacs/bin/tac_pwd 실행해서 패스워드의 해시값 생성
+                 
+- 실행 
+/usr/local/tacacs/sbin/tac_plus -C /usr/local/tacacs/conf/tac_plus.conf
+- 방화벽 개방 : tcp/49
+
+
+
+- 장비에 AAA설정
+
+aaa new-model
+
+tacacs-server host 192.168.20.XXX key cisco123
+
+aaa authentication login default group tacacs+ => 로그인 인증시 tacacs서버에게 인증요청
+aaa authentication login for_console group tacacs+ local => 콘솔 로그인 인증시 tacacs서버에게 인증요청, 
+                                                            서버가 동작하지 않을 경우 local 사용자로 인증.
+aaa authentication enable default group tacacs+ enable  => enable 패스워드를 tacacs서버에게 인증요청
+
+aaa authorization config-commands    => tacacs 서버에게 명령을 실행할 권한 인증요청
+aaa authorization exec default group tacacs+  => enable 모드 진입할 권한 인증요청
+aaa authorization commands 10 default group tacacs+ => privilege 레벨에 따른 명령사용 인증요청
+
+aaa accounting exec default start-stop group tacacs+ => 접속한 사용자의 실행 세션에 대한 기록 전송
+aaa accounting commands 10 default start-stop group tacacs+ => 사용자가 실행한 명령 전송. 지정한 레벨 이상의 명령만 전송
+
+
+privilege exec level 10 configure terminal
+privilege exec level 10 show running-config   => 10번 레벨의 privileged 모드에서 사용할 수 있는 명령 지정
+privilege configure level 10 interface        => 10번 레벨의 configure 모드에서 사용할 수 있는 명령 지정
+
+user admin1 privilege 15 password cisco
+
+line console 0
+login authentication for_console
+
+line vty 0 4
+login authentication default
+
+- tac_plus.conf파일에 privilege 레벨 10의 사용자 추가
+
+user = admin10 {
+        login = cleartext "1234"
+        service = exec {
+                priv-lvl = 10
+        }
+        cmd = show {
+        permit running-config
+        permit privilege
+        deny .*
+        }
+        cmd = configure {
+        permit .*
+        }
+        cmd = interface {
+        permit FastEthernet.*
+        deny .*
+        }
+}
+
+- tac_plus.conf파일에 accounting에 사용할 파일 지정
+
+accounting file = /var/log/tac_plus.acct
+
+
+aaa authentication enable default group tacacs+   => enable 패스워드를 tacacs서버에게 인증요청
+aaa authorization config-commands    => tacacs 서버에게 명령을 실행할 권한 인증요청
+aaa authorization exec default group tacacs+  => enable 모드 진입할 권한 인증요청
+aaa authorization commands 10 default group tacacs+ => privilege 레벨에 따른 명령사용 인증요청
+aaa accounting exec default start-stop group tacacs+ => 접속한 사용자의 실행 세션에 대한 기록 전송
+aaa accounting commands 10 default start-stop group tacacs+ => 사용자가 실행한 명령 전송. 지정한 레벨 이상의 명령만 전송
+
+
+privilege exec level 10 configure terminal
+privilege exec level 10 show running-config   => 10번 레벨의 privileged 모드에서 사용할 수 있는 명령 지정
+privilege configure level 10 interface        => 10번 레벨의 configure 모드에서 사용할 수 있는 명령 지정
+
+
+
+>> 802.1X와 RADIUS서버를 이용한 클라이언트 인증.
+  - 클라이언트가 네트워크에 연결하기 위해 인증을 하도록 하는 기능.
+
+
