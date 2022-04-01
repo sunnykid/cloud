@@ -4,3 +4,13 @@ echo "deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian focal co
 sudo apt update
 sudo apt install virtualbox-6.1 
 systemctl status vboxdrv
+
+$ sudo apt install virtualbox virtualbox-ext-pack
+$ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+$ sudo install minikube-linux-amd64 /usr/local/bin/minikube
+$ minikube version
+
+
+$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+$ sudo install kubectl /usr/local/bin/kubectl
+$ kubectl version --client -o json
