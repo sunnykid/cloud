@@ -1,0 +1,6 @@
+docker 설치 후 /var/run/docker.sock의 permission denied 발생하는 경우
+
+/var/run/docker.sock 파일의 권한을 666으로 변경하여 그룹 내 다른 사용자도 접근 가능하게 변경
+sudo chmod 666 /var/run/docker.sock
+또는 chown 으로 group ownership 변경
+sudo chown root:docker /var/run/docker.sock
