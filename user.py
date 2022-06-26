@@ -1,5 +1,7 @@
 #-*-coding:utf-8-*-
 
+# 사용자 계정별 정책을 호출하는 코드
+
 import boto3
 import json
 import csv
