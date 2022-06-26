@@ -1,0 +1,5 @@
+aws ec2 describe-instances --filters Name=tag-key,Values=my_tag
+
+aws ec2 describe-instances --filters Name=tag-value,Values=my_tag_value
+
+aws ec2 describe-instances --filters Name=tag:my_tag,Values=my_tag_value
