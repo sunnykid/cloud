@@ -1,5 +1,9 @@
 #-*-coding:utf-8-*-
 
+# EC2가 존재하는 리전에서 describe_security_groups 함수를 이용해서 Security Group 정책을 Security_Group.csv에 저장하는 예제
+# Inbound와 Outbound Rule을 가져오는 코드로 Rule 없는 경우는 가져오지 않음.
+# Description이 있으면 해당 설명을 출력하고 없으면, No Description을 출력함.
+
 import boto3
 import csv
 import requests
