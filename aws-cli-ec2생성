@@ -1,0 +1,50 @@
+1. aws cli 설치(리눅스)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+2. aws cli configure
+aws_access_key_id :
+aws_secret_access_key :
+region :
+3. aws sts get-caller-identity
+[ec2-user@master .aws]$ aws sts get-caller-identity
+{
+    "UserId": "469817775548",
+    "Account": "469817775548",
+    "Arn": "arn:aws:iam::469817775548:root"
+}
+4. ec2 생성 과정 : vpc, subnet, internet-gatewy, route-table, key-pair, security-group 등은 기존에 생성되어 있는 것을 이용할 수 있음.
+
+1) vpc 생성
+aws ec2 create-vpc --cidr-block 10.10.0.0/16
+2) subnet 생성
+aws ec2 create-subnet --vpc-id vpc-071ecca730edf705f \
+--cidr-block 10.10.0.0/24 \
+--availability-zone ap-northeast-2a
+3) internet-gateway 생성하고 vpc에 연결
+aws ec2 create-internet-gateway
+aws ec2 attach-internet-gateway --internet-gateway-id igw-045ff17180b53ee72 \
+--vpc-id vpc-071ecca730edf705f
+4) route-table 생성하고 entry 추가
+aws ec2 create-route-table --vpc-id vpc-071ecca730edf705f
+aws ec2 create-route --route-table-id rtb-0cbfefdc118d0dd40 \
+--destination-cidr-block 0.0.0.0/0 \
+--gateway-id igw-045ff17180b53ee72
+5) route-table에 subnet 연결
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-071ecca730edf705f" --query "Subnets[*].{ID:SubnetId,CIDR:CidrBlock}"
+aws ec2 associate-route-table --subnet-id subnet-05b8922f18096a96d --route-table-id rtb-0cbfefdc118d0dd40
+aws ec2 modify-subnet-attribute --subnet-id subnet-05b8922f18096a96d --map-public-ip-on-launch
+6) key-pair 생성
+aws ec2 create-key-pair --key-name clikeypair --query 'KeyMaterial' --output text > clikeypair.pem
+chmod 400 clikeypair.pem
+7) security-group 생성
+aws ec2 create-security-group --group-name "cli-security-group" --description "cli-security-group" --vpc-id vpc-071ecca730edf705f
+aws ec2 authorize-security-group-ingress --group-id sg-0f0b191571a92a82c --protocol tcp --port 22 --cidr 0.0.0.0/0
+8) ec2 인스턴스 생성
+   -  ami 검색
+ aws ec2 describe-images --owners amazon
+   -  ec2 생성
+aws ec2 run-instances --image-id ami-00f045aed21a55240 --count 1 \
+--instance-type t2.micro --key-name clikeypair \
+--security-group-ids sg-0f0b191571a92a82c \
+--subnet-id subnet-05b8922f18096a96d
